@@ -1,0 +1,55 @@
+name: autodev-stack
+
+services:
+  postgres:
+    image: postgres:17-alpine
+    environment:
+      POSTGRES_DB: autodev
+      POSTGRES_PASSWORD: autodev
+      POSTGRES_USER: autodev
+    healthcheck:
+      test: ['CMD-SHELL', 'pg_isready -U autodev -d autodev']
+      interval: 5s
+      timeout: 5s
+      retries: 10
+    ports:
+      - '5432:5432'
+    volumes:
+      - postgres-data:/var/lib/postgresql/data
+
+  api:
+    build:
+      context: .
+      dockerfile: apps/backends/api/Dockerfile
+    environment:
+      DATABASE_URL: postgresql://autodev:autodev@postgres:5432/autodev
+      HOST: 0.0.0.0
+      PORT: 3000
+    depends_on:
+      postgres:
+        condition: service_healthy
+    healthcheck:
+      test: ['CMD', 'wget', '-qO-', 'http://localhost:3000/api/health']
+      interval: 10s
+      timeout: 3s
+      retries: 5
+    ports:
+      - '3000:3000'
+
+  web:
+    build:
+      context: .
+      dockerfile: apps/frontends/web/Dockerfile
+      args:
+        API_URL: http://api:3000
+    environment:
+      API_URL: http://api:3000
+      PORT: 3001
+    depends_on:
+      api:
+        condition: service_healthy
+    ports:
+      - '3001:3001'
+
+volumes:
+  postgres-data:

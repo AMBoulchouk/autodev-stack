@@ -1,0 +1,17 @@
+{
+  "extends": "./tsconfig.base.json",
+  "compileOnSave": false,
+  "files": [],
+  "references": [
+    {
+      "path": "./apps/frontends/web"
+    },
+    {
+      "path": "./apps/backends/api-e2e"
+    },
+    {
+      "path": "./apps/backends/api"
+    }
+  ],
+  "compilerOptions": {}
+}

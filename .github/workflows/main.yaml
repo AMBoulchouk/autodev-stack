@@ -1,0 +1,54 @@
+name: main
+
+on:
+  pull_request:
+  push:
+    branches: [main]
+
+concurrency:
+  group: main-${{ github.ref }}
+  cancel-in-progress: true
+
+permissions:
+  contents: read
+
+jobs:
+  quality:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      - uses: pnpm/action-setup@v4
+        with:
+          version: 10
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 24
+          cache: pnpm
+      - run: pnpm install --frozen-lockfile
+      - run: pnpm nx affected -t lint,typecheck,test,build --base=origin/${{ github.base_ref || 'main' }} --head=HEAD
+      - run: docker compose config --quiet
+      - uses: imranismail/setup-kustomize@v2
+      - run: kustomize build infrastructure/kubernetes/overlays/dev
+
+  images:
+    if: github.event_name == 'push'
+    needs: quality
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      id-token: write
+    steps:
+      - uses: actions/checkout@v4
+      - uses: aws-actions/configure-aws-credentials@v5
+        with:
+          role-to-assume: ${{ vars.AWS_DEPLOY_ROLE_ARN }}
+          aws-region: ${{ vars.AWS_REGION }}
+      - uses: aws-actions/amazon-ecr-login@v2
+      - name: Build and publish immutable images
+        run: |
+          docker build -f apps/backends/api/Dockerfile -t "${{ vars.ECR_REGISTRY }}/autodev-api:${{ github.sha }}" .
+          docker build -f apps/frontends/web/Dockerfile -t "${{ vars.ECR_REGISTRY }}/autodev-web:${{ github.sha }}" .
+          docker push "${{ vars.ECR_REGISTRY }}/autodev-api:${{ github.sha }}"
+          docker push "${{ vars.ECR_REGISTRY }}/autodev-web:${{ github.sha }}"

@@ -1,0 +1,9 @@
+{
+  "name": "@autodev/web",
+  "$schema": "../../../node_modules/nx/schemas/project-schema.json",
+  "sourceRoot": "apps/frontends/web/src",
+  "projectType": "application",
+  "tags": ["type:frontend", "scope:platform"],
+  "// targets": "to see all targets run: nx show project @autodev/web --web",
+  "targets": {}
+}

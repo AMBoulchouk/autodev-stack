@@ -1,0 +1,11 @@
+.git
+.nx
+.pnpm-store
+node_modules
+nx-bootstrap
+dist
+**/.next
+**/node_modules
+**/*.log
+.env*
+!.env.example

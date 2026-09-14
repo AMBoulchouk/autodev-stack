@@ -24,35 +24,35 @@ El usuario no edita código. Su interfaz es lenguaje natural, aprobación funcio
 
 ## 2. Stack objetivo
 
-| Capa | Tecnología | Decisión |
-|---|---|---|
-| Monorepo | Nx + pnpm | Workspace escalable para 1..N frontends y 1..N backends, con project graph y caché reproducible |
-| Frontend | Next.js + TypeScript | App Router, Server Components y BFF sólo cuando corresponda |
-| Backend | NestJS + TypeScript | API modular, OpenAPI y workers |
-| Contratos | OpenAPI + JSON Schema | Contrato versionado; clientes y validadores generados |
-| Persistencia | PostgreSQL en Amazon RDS/Aurora | Multi-AZ productivo, PITR, cifrado KMS y RDS Proxy si aplica |
-| ORM/migraciones | Prisma | Esquema tipado; migraciones expand/contract y rollback documentado |
-| Identidad interna | Microsoft Entra ID | OIDC/OAuth 2.0, grupos y roles de aplicación |
-| Identidad de clientes | Microsoft Entra External ID | CIAM para usuarios externos, clientes y partners |
-| Storage | Amazon S3 | Buckets privados, URLs firmadas, versionado, lifecycle y SSE-KMS |
-| Funciones y eventos | Lambda, EventBridge, SQS, SNS, Step Functions | Procesamiento asíncrono, reintentos, DLQ e idempotencia |
-| Email | Amazon SES | Plantillas, eventos de entrega y supresión |
-| Secretos | Secrets Manager + KMS | Rotación y acceso por rol; ningún secreto en prompts o repositorio |
-| Observabilidad | OpenTelemetry + CloudWatch/X-Ray | Logs estructurados, métricas, trazas, alertas y presupuestos |
-| Edge/seguridad | CloudFront + WAF | Protección de endpoints y contenido S3 cuando sea necesario |
-| Infraestructura | AWS CDK v2 con TypeScript | Infraestructura tipada, revisada y desplegada por CI |
-| Contenedores | Docker + Amazon ECR | Una imagen inmutable por aplicación, firmada y escaneada |
-| Orquestación | Amazon EKS + Kubernetes | Runtime productivo para web, API y workers |
-| GitOps Kubernetes | Argo CD + Kustomize | Argo CD existente sincroniza manifiestos y overlays por ambiente |
-| Desarrollo local | Docker Compose | Stack reproducible con servicios y dependencias locales |
-| Preview web | Vercel | URL aislada por pull request |
-| Producción web | Vercel | Next.js; conexión privada/segura con servicios AWS |
-| CI/CD | GitHub Actions + OIDC | Sin claves AWS persistentes; gates y ambientes protegidos |
-| Agente principal | OpenAI Codex | Especifica, implementa, prueba, revisa y mantiene el repositorio |
-| Orquestación | OpenAI Agents SDK | Roles especializados, handoffs, trazabilidad y límites |
-| Integraciones | MCP | GitHub y herramientas externas con permisos mínimos |
-| Memoria | Engram por MCP | Decisiones, convenciones, incidentes y aprendizajes persistentes |
-| Metodología | GitHub Spec Kit + Superpowers | SDD como fuente de verdad y TDD estricto como ejecución |
+| Capa                  | Tecnología                                    | Decisión                                                                                        |
+| --------------------- | --------------------------------------------- | ----------------------------------------------------------------------------------------------- |
+| Monorepo              | Nx + pnpm                                     | Workspace escalable para 1..N frontends y 1..N backends, con project graph y caché reproducible |
+| Frontend              | Next.js + TypeScript                          | App Router, Server Components y BFF sólo cuando corresponda                                     |
+| Backend               | NestJS + TypeScript                           | API modular, OpenAPI y workers                                                                  |
+| Contratos             | OpenAPI + JSON Schema                         | Contrato versionado; clientes y validadores generados                                           |
+| Persistencia          | PostgreSQL en Amazon RDS/Aurora               | Multi-AZ productivo, PITR, cifrado KMS y RDS Proxy si aplica                                    |
+| ORM/migraciones       | Prisma                                        | Esquema tipado; migraciones expand/contract y rollback documentado                              |
+| Identidad interna     | Microsoft Entra ID                            | OIDC/OAuth 2.0, grupos y roles de aplicación                                                    |
+| Identidad de clientes | Microsoft Entra External ID                   | CIAM para usuarios externos, clientes y partners                                                |
+| Storage               | Amazon S3                                     | Buckets privados, URLs firmadas, versionado, lifecycle y SSE-KMS                                |
+| Funciones y eventos   | Lambda, EventBridge, SQS, SNS, Step Functions | Procesamiento asíncrono, reintentos, DLQ e idempotencia                                         |
+| Email                 | Amazon SES                                    | Plantillas, eventos de entrega y supresión                                                      |
+| Secretos              | Secrets Manager + KMS                         | Rotación y acceso por rol; ningún secreto en prompts o repositorio                              |
+| Observabilidad        | OpenTelemetry + CloudWatch/X-Ray              | Logs estructurados, métricas, trazas, alertas y presupuestos                                    |
+| Edge/seguridad        | CloudFront + WAF                              | Protección de endpoints y contenido S3 cuando sea necesario                                     |
+| Infraestructura       | AWS CDK v2 con TypeScript                     | Infraestructura tipada, revisada y desplegada por CI                                            |
+| Contenedores          | Docker + Amazon ECR                           | Una imagen inmutable por aplicación, firmada y escaneada                                        |
+| Orquestación          | Amazon EKS + Kubernetes                       | Runtime productivo para web, API y workers                                                      |
+| GitOps Kubernetes     | Argo CD + Kustomize                           | Argo CD existente sincroniza manifiestos y overlays por ambiente                                |
+| Desarrollo local      | Docker Compose                                | Stack reproducible con servicios y dependencias locales                                         |
+| Preview web           | Vercel                                        | URL aislada por pull request                                                                    |
+| Producción web        | Vercel                                        | Next.js; conexión privada/segura con servicios AWS                                              |
+| CI/CD                 | GitHub Actions + OIDC                         | Sin claves AWS persistentes; gates y ambientes protegidos                                       |
+| Agente principal      | OpenAI Codex                                  | Especifica, implementa, prueba, revisa y mantiene el repositorio                                |
+| Orquestación          | OpenAI Agents SDK                             | Roles especializados, handoffs, trazabilidad y límites                                          |
+| Integraciones         | MCP                                           | GitHub y herramientas externas con permisos mínimos                                             |
+| Memoria               | Engram por MCP                                | Decisiones, convenciones, incidentes y aprendizajes persistentes                                |
+| Metodología           | GitHub Spec Kit + Superpowers                 | SDD como fuente de verdad y TDD estricto como ejecución                                         |
 
 > Microsoft Entra External ID será la solución CIAM para clientes y usuarios externos. Microsoft Entra ID se mantiene exclusivamente para workforce y administración. [Microsoft Learn](https://learn.microsoft.com/en-us/entra/external-id/customers/faq-customers)
 
@@ -268,17 +268,17 @@ Reglas no negociables en `AGENTS.md` y `.specify/memory/constitution.md`:
 
 ## 7. Agentes especializados
 
-| Agente | Responsabilidad | Escritura permitida |
-|---|---|---|
-| Intake/Product | Convertir intención en resultados y preguntas mínimas | Specs |
-| Spec reviewer | Hallar ambigüedad, contradicciones y falta de aceptación | Comentarios/checklists |
-| Architect | Plan, ADR, contratos, datos, seguridad y costo | Plan/docs |
-| Implementer | Ejecutar un slice con TDD | Código/tests |
-| Test engineer | Pruebas negativas, integración, E2E y regresión | Tests |
-| Security reviewer | Threat model, IAM, supply chain y secretos | Reportes/fixes acotados |
-| Code reviewer | Correctitud, mantenibilidad y adherencia | Comentarios/fixes acotados |
-| Release manager | CI, preview, promoción, rollback y changelog | Automatización/release |
-| SRE | Métricas, incidentes, runbooks y feedback a specs | Ops/docs/issues |
+| Agente            | Responsabilidad                                          | Escritura permitida        |
+| ----------------- | -------------------------------------------------------- | -------------------------- |
+| Intake/Product    | Convertir intención en resultados y preguntas mínimas    | Specs                      |
+| Spec reviewer     | Hallar ambigüedad, contradicciones y falta de aceptación | Comentarios/checklists     |
+| Architect         | Plan, ADR, contratos, datos, seguridad y costo           | Plan/docs                  |
+| Implementer       | Ejecutar un slice con TDD                                | Código/tests               |
+| Test engineer     | Pruebas negativas, integración, E2E y regresión          | Tests                      |
+| Security reviewer | Threat model, IAM, supply chain y secretos               | Reportes/fixes acotados    |
+| Code reviewer     | Correctitud, mantenibilidad y adherencia                 | Comentarios/fixes acotados |
+| Release manager   | CI, preview, promoción, rollback y changelog             | Automatización/release     |
+| SRE               | Métricas, incidentes, runbooks y feedback a specs        | Ops/docs/issues            |
 
 Agents SDK coordina handoffs y límites; Codex realiza el trabajo de ingeniería. Separar autor, revisor y release reduce auto-validación complaciente.
 
@@ -344,16 +344,16 @@ Agregar mutation testing en dominio crítico y DAST en staging de forma programa
 
 ## 11. Estrategia de pruebas
 
-| Nivel | Alcance | Herramienta sugerida |
-|---|---|---|
-| Unitario | Dominio puro, guards, policies, casos límite | Vitest o Jest |
-| Integración | NestJS + PostgreSQL + S3/SQS compatibles | Testcontainers + LocalStack donde aporte fidelidad |
-| Contrato | OpenAPI, consumidores y proveedores | Schemathesis/Pact según necesidad |
-| Componentes UI | Estados y accesibilidad | Testing Library + axe |
-| E2E | Flujos reales de usuario y auth | Playwright |
-| Infraestructura | CDK, Docker y Kubernetes | CDK assertions + cdk-nag + Trivy + Kustomize + policy-as-code |
-| Resiliencia | Retries, DLQ, duplicados, timeouts | Suites de fallo controlado |
-| Producción | Smoke, SLO y synthetic checks | CloudWatch Synthetics |
+| Nivel           | Alcance                                      | Herramienta sugerida                                          |
+| --------------- | -------------------------------------------- | ------------------------------------------------------------- |
+| Unitario        | Dominio puro, guards, policies, casos límite | Vitest o Jest                                                 |
+| Integración     | NestJS + PostgreSQL + S3/SQS compatibles     | Testcontainers + LocalStack donde aporte fidelidad            |
+| Contrato        | OpenAPI, consumidores y proveedores          | Schemathesis/Pact según necesidad                             |
+| Componentes UI  | Estados y accesibilidad                      | Testing Library + axe                                         |
+| E2E             | Flujos reales de usuario y auth              | Playwright                                                    |
+| Infraestructura | CDK, Docker y Kubernetes                     | CDK assertions + cdk-nag + Trivy + Kustomize + policy-as-code |
+| Resiliencia     | Retries, DLQ, duplicados, timeouts           | Suites de fallo controlado                                    |
+| Producción      | Smoke, SLO y synthetic checks                | CloudWatch Synthetics                                         |
 
 ## 12. Fases de implementación
 
@@ -410,13 +410,13 @@ Agregar mutation testing en dominio crítico y DAST en staging de forma programa
 
 ## 13. Niveles de autonomía
 
-| Nivel | Capacidad | Gate humano |
-|---|---|---|
-| A0 | Analiza y propone | Todo cambio |
-| A1 | Implementa y abre PR | Merge y deploy |
-| A2 | Merge automático de bajo riesgo | Producción |
-| A3 | Deploy automático reversible con canary | Cambios sensibles |
-| A4 | Operación rutinaria y rollback automático | Negocio, datos, IAM y gasto material |
+| Nivel | Capacidad                                 | Gate humano                          |
+| ----- | ----------------------------------------- | ------------------------------------ |
+| A0    | Analiza y propone                         | Todo cambio                          |
+| A1    | Implementa y abre PR                      | Merge y deploy                       |
+| A2    | Merge automático de bajo riesgo           | Producción                           |
+| A3    | Deploy automático reversible con canary   | Cambios sensibles                    |
+| A4    | Operación rutinaria y rollback automático | Negocio, datos, IAM y gasto material |
 
 Comenzar en A1. El ascenso se decide por tipo de cambio, no globalmente, y requiere métricas sostenidas. “No tocar código” es viable; “sin gobernanza humana” no es un objetivo seguro.
 
