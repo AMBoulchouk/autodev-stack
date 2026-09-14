@@ -43,7 +43,7 @@ El usuario no edita código. Su interfaz es lenguaje natural, aprobación funcio
 | Infraestructura | AWS CDK v2 con TypeScript | Infraestructura tipada, revisada y desplegada por CI |
 | Contenedores | Docker + Amazon ECR | Una imagen inmutable por aplicación, firmada y escaneada |
 | Orquestación | Amazon EKS + Kubernetes | Runtime productivo para web, API y workers |
-| Packaging Kubernetes | Helm | Chart base versionado y values por ambiente |
+| GitOps Kubernetes | Argo CD + Kustomize | Argo CD existente sincroniza manifiestos y overlays por ambiente |
 | Desarrollo local | Docker Compose | Stack reproducible con servicios y dependencias locales |
 | Preview web | Vercel | URL aislada por pull request |
 | Producción web | Vercel | Next.js; conexión privada/segura con servicios AWS |
@@ -87,7 +87,7 @@ GitHub Issue
 - `apps/functions`: Lambdas pequeñas, idempotentes y de responsabilidad única.
 - `apps/web` también produce una imagen Docker compatible con EKS para portabilidad, contingencia o migración desde Vercel.
 - ECR almacena imágenes por digest; EKS despliega digests promovidos, nunca tags mutables.
-- Helm empaqueta los recursos Kubernetes y mantiene configuración separada para `dev`, `staging` y `prod`.
+- Argo CD sincroniza el estado declarado con EKS; Kustomize mantiene una base común y overlays para `dev`, `staging` y `prod`.
 - PostgreSQL y recursos internos en subredes privadas; acceso administrativo mediante mecanismos auditables, no exposición pública.
 - Ambientes `dev`, `preview`, `staging` y `prod` separados por cuenta/proyecto y credenciales.
 
@@ -114,14 +114,18 @@ GitHub Issue
 ├── infrastructure/
 │   ├── cdk/
 │   └── kubernetes/
-│       ├── charts/
-│       │   └── platform/
-│       │       ├── Chart.yaml
-│       │       ├── values.yaml
-│       │       ├── values-dev.yaml
-│       │       ├── values-staging.yaml
-│       │       ├── values-prod.yaml
-│       │       └── templates/
+│       ├── base/
+│       │   ├── kustomization.yaml
+│       │   ├── deployments/
+│       │   ├── services/
+│       │   └── policies/
+│       ├── overlays/
+│       │   ├── dev/
+│       │   │   └── kustomization.yaml
+│       │   ├── staging/
+│       │   │   └── kustomization.yaml
+│       │   └── prod/
+│       │       └── kustomization.yaml
 │       └── policies/
 ├── specs/
 │   └── NNN-feature/
@@ -152,7 +156,9 @@ GitHub Issue
 - Las imágenes usadas por Compose, CI y EKS se construyen desde los mismos Dockerfiles.
 - La configuración se inyecta por ambiente; las imágenes no contienen secretos ni archivos `.env`.
 - En local, Entra usa un tenant de desarrollo. Sólo los tests aislados pueden usar un proveedor de identidad simulado.
-- El chart Helm define `Deployment`, `Service`, `Ingress`, `ServiceAccount`, `ConfigMap`, autoscaling, probes, disruption budgets y network policies.
+- La base Kustomize define `Deployment`, `Service`, `Ingress`, `ServiceAccount`, `ConfigMap`, autoscaling, probes, disruption budgets y network policies.
+- Los overlays sólo contienen diferencias explícitas por ambiente; no duplican manifiestos completos.
+- Argo CD es el único actor autorizado para aplicar manifiestos al clúster. GitHub Actions actualiza el estado deseado, pero no ejecuta `kubectl apply`.
 - Secrets Store CSI Driver sincroniza secretos autorizados desde AWS Secrets Manager; no se versionan `Secret` de Kubernetes.
 
 ### Workflow `.github/workflows/main.yaml`
@@ -163,17 +169,19 @@ pull_request
   -> contract/integration/e2e
   -> build Docker images
   -> scan images, dependencias, secretos e IaC
-  -> helm lint/template + policy checks
+  -> kustomize build + schema/policy checks
   -> publish imagen efímera
   -> preview + smoke tests
 
 push main
   -> repetir gates
   -> publicar imágenes inmutables en ECR
-  -> desplegar por digest en EKS staging
+  -> actualizar por digest el overlay de EKS staging
+  -> Argo CD sincroniza staging
   -> smoke/contract/E2E
   -> aprobación de environment production
-  -> promover los mismos digests a EKS production
+  -> promover los mismos digests al overlay de EKS production
+  -> Argo CD sincroniza production
   -> verificar rollout/SLO
   -> rollback automático ante fallo seguro
 ```
@@ -228,7 +236,7 @@ Reglas no negociables en `AGENTS.md` y `.specify/memory/constitution.md`:
 
 - GitHub Actions repite validaciones en entorno limpio.
 - El workflow construye una vez, publica en ECR y promueve exactamente el mismo digest entre ambientes.
-- Helm ejecuta `lint`, renderizado y validación de políticas antes de aplicar; EKS usa rollout progresivo y verifica probes/SLO.
+- CI ejecuta `kustomize build`, validación de esquemas y políticas; Argo CD sincroniza EKS, controla el estado de salud y reporta divergencias.
 - Vercel crea preview y se ejecutan E2E contra ella.
 - El agente publica un resumen no técnico: qué cambió, evidencia, riesgos y enlace de preview.
 - El usuario aprueba la experiencia, no el código.
@@ -287,7 +295,7 @@ migration dry-run y compatibilidad expand/contract
 dependency + secret + SAST scan
 IaC synth/diff + policy checks
 Docker build + SBOM + image scan
-helm lint/template + schema/policy validation
+kustomize build + schema/policy validation
 build Next.js/NestJS
 preview smoke tests
 spec/code traceability
@@ -320,7 +328,7 @@ Agregar mutation testing en dominio crítico y DAST en staging de forma programa
 | Contrato | OpenAPI, consumidores y proveedores | Schemathesis/Pact según necesidad |
 | Componentes UI | Estados y accesibilidad | Testing Library + axe |
 | E2E | Flujos reales de usuario y auth | Playwright |
-| Infraestructura | CDK, Docker y Kubernetes | CDK assertions + cdk-nag + Trivy + Helm lint + policy-as-code |
+| Infraestructura | CDK, Docker y Kubernetes | CDK assertions + cdk-nag + Trivy + Kustomize + policy-as-code |
 | Resiliencia | Retries, DLQ, duplicados, timeouts | Suites de fallo controlado |
 | Producción | Smoke, SLO y synthetic checks | CloudWatch Synthetics |
 
@@ -340,7 +348,7 @@ Agregar mutation testing en dominio crítico y DAST en staging de forma programa
 - Crear monorepo, Next.js, NestJS, contratos y CDK.
 - Crear Dockerfiles multi-stage para web, API y workers.
 - Crear `compose.yaml` para levantar el stack completo en local con PostgreSQL y emulación selectiva AWS.
-- Crear chart Helm base y overlays de configuración por ambiente.
+- Crear manifiestos base y overlays Kustomize para `dev`, `staging` y `prod`.
 - Instalar Spec Kit para Codex y adaptar templates al stack.
 - Instalar Superpowers con versión fijada.
 - Conectar Engram por MCP y probar política de memoria.
@@ -351,7 +359,8 @@ Agregar mutation testing en dominio crítico y DAST en staging de forma programa
 - Provisionar cuentas/ambientes AWS, VPC, EKS, ECR, RDS, S3, colas, secretos y observabilidad.
 - Instalar AWS Load Balancer Controller, Secrets Store CSI Driver, EKS Pod Identity y observabilidad ADOT/CloudWatch.
 - Integrar Entra ID/External ID en Next.js y validación JWT en NestJS.
-- Crear `.github/workflows/main.yaml` con GitHub OIDC, build/push ECR, despliegue Helm a EKS y Vercel previews.
+- Crear `.github/workflows/main.yaml` con GitHub OIDC, build/push ECR, actualización de overlays Kustomize y Vercel previews.
+- Integrar el repositorio y las rutas de overlays con el Argo CD existente, sin reinstalar ni administrar Argo CD desde este proyecto.
 - Probar backup/restore, migración y rollback.
 
 ### Fase 3 — Fábrica autónoma (semanas 6–7)
@@ -422,7 +431,7 @@ Comenzar en A1. El ascenso se decide por tipo de cambio, no globalmente, y requi
 8. Implementar persistencia PostgreSQL y estrategia de migraciones.
 9. Implementar storage S3 seguro con URLs firmadas.
 10. Implementar bus de eventos, idempotencia, retries y DLQ.
-11. Construir `.github/workflows/main.yaml`, preview, gates, OIDC, ECR, Helm/EKS y entornos protegidos.
+11. Construir `.github/workflows/main.yaml`, preview, gates, OIDC, ECR, Kustomize/Argo CD/EKS y entornos protegidos.
 12. Construir orquestador multiagente y ciclo Issue-to-PR.
 13. Agregar observabilidad, seguridad, costo y kill switch.
 14. Ejecutar piloto, medir y promover autonomía por clase de riesgo.
