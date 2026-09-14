@@ -26,7 +26,7 @@ El usuario no edita código. Su interfaz es lenguaje natural, aprobación funcio
 
 | Capa | Tecnología | Decisión |
 |---|---|---|
-| Monorepo | pnpm + Turborepo | Aplicaciones y paquetes compartidos con caché reproducible |
+| Monorepo | Nx + pnpm | Workspace escalable para 1..N frontends y 1..N backends, con project graph y caché reproducible |
 | Frontend | Next.js + TypeScript | App Router, Server Components y BFF sólo cuando corresponda |
 | Backend | NestJS + TypeScript | API modular, OpenAPI y workers |
 | Contratos | OpenAPI + JSON Schema | Contrato versionado; clientes y validadores generados |
@@ -81,11 +81,12 @@ GitHub Issue
 
 ### Topología inicial recomendada
 
-- `apps/web`: Next.js desplegado en Vercel.
-- `apps/api`: NestJS contenerizado y desplegado en Amazon EKS detrás de AWS Load Balancer Controller; Lambda queda para cargas event-driven y breves.
-- `apps/workers`: consumidores NestJS contenerizados en EKS para procesos sostenidos.
-- `apps/functions`: Lambdas pequeñas, idempotentes y de responsabilidad única.
-- `apps/web` también produce una imagen Docker compatible con EKS para portabilidad, contingencia o migración desde Vercel.
+- `apps/frontends/<nombre>`: 1..N aplicaciones Next.js desplegables de forma independiente.
+- `apps/backends/<nombre>`: 1..N APIs NestJS contenerizadas y desplegadas en Amazon EKS detrás de AWS Load Balancer Controller.
+- `apps/workers/<nombre>`: 0..N consumidores NestJS contenerizados en EKS para procesos sostenidos.
+- `apps/functions/<nombre>`: 0..N Lambdas pequeñas, idempotentes y de responsabilidad única.
+- Cada frontend produce una imagen Docker compatible con EKS y puede habilitar despliegue en Vercel cuando el proyecto lo requiera.
+- Nx modela dependencias, ejecuta únicamente proyectos afectados y evita acoplamientos no autorizados mediante tags y module-boundary rules.
 - ECR almacena imágenes por digest; EKS despliega digests promovidos, nunca tags mutables.
 - Argo CD sincroniza el estado declarado con EKS; Kustomize mantiene una base común y overlays para `dev`, `staging` y `prod`.
 - PostgreSQL y recursos internos en subredes privadas; acceso administrativo mediante mecanismos auditables, no exposición pública.
@@ -97,13 +98,22 @@ GitHub Issue
 .
 ├── AGENTS.md
 ├── apps/
-│   ├── web/
-│   │   └── Dockerfile
-│   ├── api/
-│   │   └── Dockerfile
+│   ├── frontends/
+│   │   └── <frontend-name>/
+│   │       ├── project.json
+│   │       └── Dockerfile
+│   ├── backends/
+│   │   └── <backend-name>/
+│   │       ├── project.json
+│   │       └── Dockerfile
 │   ├── workers/
-│   │   └── Dockerfile
+│   │   └── <worker-name>/
+│   │       ├── project.json
+│   │       └── Dockerfile
 │   └── functions/
+│       └── <function-name>/
+│           ├── project.json
+│           └── Dockerfile
 ├── packages/
 │   ├── contracts/
 │   ├── domain/
@@ -146,13 +156,26 @@ GitHub Issue
 │   └── pull_request_template.md
 ├── compose.yaml
 ├── .dockerignore
+├── nx.json
+├── pnpm-workspace.yaml
 └── .specify/
 ```
+
+### Convenciones Nx
+
+- Cada aplicación y librería es un proyecto Nx con owner, tipo, dominio y targets declarados.
+- Tags mínimas: `type:frontend`, `type:backend`, `type:worker`, `type:function`, `type:domain`, `type:data-access`, `type:ui`, `scope:<dominio>`.
+- `@nx/enforce-module-boundaries` impide imports entre dominios o capas no autorizadas.
+- Los nombres son estables: `<scope>-<capability>-<kind>`; los artefactos desplegables nunca dependen de otro artefacto desplegable.
+- Librerías compartidas viven en `packages/`; sólo se comparten contratos, dominio y capacidades con límites explícitos.
+- Generadores Nx propios crean frontends Next.js, backends NestJS, workers, Lambdas, librerías, Dockerfiles, manifests Kustomize, pruebas y entradas CI con la misma convención.
+- CI usa `nx affected` en pull requests y una validación completa programada o antes de producción.
+- Nx Cloud es opcional; la caché local/remota no debe almacenar secretos ni resultados sensibles.
 
 ### Contrato de ejecución generado
 
 - Cada aplicación desplegable contiene un `Dockerfile` multi-stage, non-root, con healthcheck y versión de Node fijada.
-- `compose.yaml` levanta `web`, `api`, `workers`, PostgreSQL y emuladores AWS estrictamente necesarios.
+- `compose.yaml` levanta los frontends, backends y workers seleccionados para el proyecto, PostgreSQL y emuladores AWS estrictamente necesarios.
 - Las imágenes usadas por Compose, CI y EKS se construyen desde los mismos Dockerfiles.
 - La configuración se inyecta por ambiente; las imágenes no contienen secretos ni archivos `.env`.
 - En local, Entra usa un tenant de desarrollo. Sólo los tests aislados pueden usar un proveedor de identidad simulado.
@@ -165,7 +188,7 @@ GitHub Issue
 
 ```text
 pull_request
-  -> install/lint/typecheck/test
+  -> install + nx affected lint/typecheck/test
   -> contract/integration/e2e
   -> build Docker images
   -> scan images, dependencias, secretos e IaC
@@ -174,7 +197,7 @@ pull_request
   -> preview + smoke tests
 
 push main
-  -> repetir gates
+  -> repetir gates sobre proyectos afectados
   -> publicar imágenes inmutables en ECR
   -> actualizar por digest el overlay de EKS staging
   -> Argo CD sincroniza staging
@@ -296,7 +319,7 @@ dependency + secret + SAST scan
 IaC synth/diff + policy checks
 Docker build + SBOM + image scan
 kustomize build + schema/policy validation
-build Next.js/NestJS
+nx affected build Next.js/NestJS
 preview smoke tests
 spec/code traceability
 revisión independiente
@@ -345,8 +368,9 @@ Agregar mutation testing en dominio crítico y DAST en staging de forma programa
 
 ### Fase 1 — Golden path local (semanas 2–3)
 
-- Crear monorepo, Next.js, NestJS, contratos y CDK.
-- Crear Dockerfiles multi-stage para web, API y workers.
+- Crear workspace Nx con pnpm, Next.js, NestJS, contratos y CDK.
+- Crear generadores Nx para agregar 1..N frontends, backends, workers y funciones sin configuración manual.
+- Crear Dockerfiles multi-stage para cada frontend, backend y worker generado.
 - Crear `compose.yaml` para levantar el stack completo en local con PostgreSQL y emulación selectiva AWS.
 - Crear manifiestos base y overlays Kustomize para `dev`, `staging` y `prod`.
 - Instalar Spec Kit para Codex y adaptar templates al stack.
@@ -422,7 +446,7 @@ Comenzar en A1. El ascenso se decide por tipo de cambio, no globalmente, y requi
 ## 16. Primer backlog ejecutable
 
 1. Crear constitución SDD/TDD y matriz de autonomía.
-2. Inicializar monorepo y golden paths Next.js/NestJS/CDK/Docker/EKS.
+2. Inicializar monorepo Nx y golden paths/generadores Next.js/NestJS/CDK/Docker/EKS para 1..N aplicaciones.
 3. Crear plantilla Spec Kit específica para Entra, PostgreSQL, S3 y eventos AWS.
 4. Instalar y fijar Superpowers; definir skills permitidos.
 5. Seleccionar, auditar y conectar Engram.
