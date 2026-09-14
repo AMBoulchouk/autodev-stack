@@ -21,3 +21,16 @@
 - The `nx-generate` skill handles generator discovery internally - don't call nx_docs just to look up generator syntax
 
 <!-- nx configuration end-->
+
+## Delivery constitution
+
+- Specifications under `specs/` are the source of truth.
+- Do not write production behavior before a failing test demonstrates the requirement.
+- Follow RED, GREEN and REFACTOR in that order.
+- Keep requirement, test, implementation and delivery evidence traceable.
+- Never claim a test, review, approval or deployment that did not occur.
+- The author cannot approve their own change.
+- Production, destructive migrations, IAM changes and material cost increases require human approval.
+- Never store credentials, tokens, PII or production payloads in prompts, logs, Git, specs or Engram.
+- GitHub Actions publishes immutable ECR images; Git declares desired state; only Argo CD applies it to EKS.
+- Use Engram only for durable decisions, conventions and sanitized incident learnings. Canonical artifacts remain in Git.

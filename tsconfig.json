@@ -11,6 +11,9 @@
     },
     {
       "path": "./apps/backends/api"
+    },
+    {
+      "path": "./apps/orchestrator"
     }
   ],
   "compilerOptions": {}

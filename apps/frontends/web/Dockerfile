@@ -2,7 +2,8 @@ FROM node:24-alpine AS build
 WORKDIR /workspace
 RUN corepack enable
 COPY package.json pnpm-lock.yaml pnpm-workspace.yaml nx.json tsconfig*.json ./
-COPY apps/frontends/web apps/frontends/web
+COPY apps apps
+COPY packages packages
 RUN pnpm install --frozen-lockfile
 ARG API_URL=http://api:3000
 ENV API_URL=$API_URL

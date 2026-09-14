@@ -10,37 +10,42 @@ concurrency:
   cancel-in-progress: true
 
 permissions:
+  actions: read
   contents: read
 
 jobs:
   quality:
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v5
         with:
           fetch-depth: 0
+      - uses: nrwl/nx-set-shas@v5
       - uses: pnpm/action-setup@v4
-        with:
-          version: 10
       - uses: actions/setup-node@v4
         with:
           node-version: 24
           cache: pnpm
       - run: pnpm install --frozen-lockfile
-      - run: pnpm nx affected -t lint,typecheck,test,build --base=origin/${{ github.base_ref || 'main' }} --head=HEAD
+      - run: pnpm nx affected -t lint,typecheck,test,build
       - run: docker compose config --quiet
       - uses: imranismail/setup-kustomize@v2
       - run: kustomize build infrastructure/kubernetes/overlays/dev
+      - name: Build deployable images
+        run: |
+          docker build -f apps/backends/api/Dockerfile -t autodev-api:pr .
+          docker build -f apps/frontends/web/Dockerfile -t autodev-web:pr .
 
-  images:
+  delivery:
     if: github.event_name == 'push'
     needs: quality
     runs-on: ubuntu-latest
     permissions:
-      contents: read
+      contents: write
       id-token: write
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v5
+      - uses: imranismail/setup-kustomize@v2
       - uses: aws-actions/configure-aws-credentials@v5
         with:
           role-to-assume: ${{ vars.AWS_DEPLOY_ROLE_ARN }}
@@ -52,3 +57,17 @@ jobs:
           docker build -f apps/frontends/web/Dockerfile -t "${{ vars.ECR_REGISTRY }}/autodev-web:${{ github.sha }}" .
           docker push "${{ vars.ECR_REGISTRY }}/autodev-api:${{ github.sha }}"
           docker push "${{ vars.ECR_REGISTRY }}/autodev-web:${{ github.sha }}"
+      - name: Update staging desired state
+        shell: bash
+        run: |
+          API_DIGEST=$(aws ecr describe-images --repository-name autodev-api --image-ids imageTag="${{ github.sha }}" --query 'imageDetails[0].imageDigest' --output text)
+          WEB_DIGEST=$(aws ecr describe-images --repository-name autodev-web --image-ids imageTag="${{ github.sha }}" --query 'imageDetails[0].imageDigest' --output text)
+          cd infrastructure/kubernetes/overlays/staging
+          kustomize edit set image "api=${{ vars.ECR_REGISTRY }}/autodev-api@${API_DIGEST}"
+          kustomize edit set image "web=${{ vars.ECR_REGISTRY }}/autodev-web@${WEB_DIGEST}"
+          cd ../../../..
+          git config user.name "autodev-delivery[bot]"
+          git config user.email "autodev-delivery[bot]@users.noreply.github.com"
+          git add infrastructure/kubernetes/overlays/staging/kustomization.yaml
+          git commit -m "chore(gitops): promote ${{ github.sha }} to staging [skip ci]"
+          git push

@@ -17,8 +17,34 @@ export default [
           allow: ['^.*/eslint(\\.base)?\\.config\\.[cm]?[jt]s$'],
           depConstraints: [
             {
-              sourceTag: '*',
-              onlyDependOnLibsWithTags: ['*'],
+              sourceTag: 'type:frontend',
+              onlyDependOnLibsWithTags: [
+                'type:contracts',
+                'type:domain',
+                'type:ui',
+                'type:config',
+              ],
+            },
+            {
+              sourceTag: 'type:backend',
+              onlyDependOnLibsWithTags: [
+                'type:contracts',
+                'type:domain',
+                'type:data-access',
+                'type:config',
+              ],
+            },
+            {
+              sourceTag: 'type:orchestrator',
+              onlyDependOnLibsWithTags: [
+                'type:contracts',
+                'type:domain',
+                'type:config',
+              ],
+            },
+            {
+              sourceTag: 'scope:platform',
+              onlyDependOnLibsWithTags: ['scope:platform', 'scope:shared'],
             },
           ],
         },

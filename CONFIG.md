@@ -105,6 +105,8 @@ ENTRA_TENANT_ID=<tenant-id>
 ENTRA_CLIENT_ID=<client-id>
 ENTRA_EXTERNAL_TENANT_ID=<external-tenant-id>
 ENTRA_EXTERNAL_CLIENT_ID=<external-client-id>
+OPENAI_API_KEY=<openai-api-key>
+ENGRAM_MCP_COMMAND=<engram-stdio-command>
 ```
 
 Entra ID se usa para workforce y administración. Entra External ID se usa para clientes y usuarios externos.

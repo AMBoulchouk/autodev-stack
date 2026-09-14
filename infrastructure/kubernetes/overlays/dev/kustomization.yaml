@@ -5,7 +5,7 @@ resources: [../../base]
 images:
   - name: api
     newName: REPLACE_ECR_REGISTRY/autodev-api
-    newTag: dev
+    digest: sha256:REPLACE_API_DIGEST
   - name: web
     newName: REPLACE_ECR_REGISTRY/autodev-web
-    newTag: dev
+    digest: sha256:REPLACE_WEB_DIGEST

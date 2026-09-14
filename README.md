@@ -2,6 +2,8 @@
 
 AI-native Nx monorepo for independently deployable Next.js frontends and NestJS backends.
 
+The repository includes an executable Agents SDK orchestrator nucleus. Production delivery remains approval-gated.
+
 ## Requirements
 
 - Node.js 24
@@ -40,6 +42,15 @@ pnpm build
 pnpm nx g @nx/next:application apps/frontends/<name> --appDir --useProjectJson
 pnpm nx g @nx/nest:application apps/backends/<name> --useProjectJson
 ```
+
+## Autonomous workflow
+
+```bash
+export OPENAI_API_KEY=<key>
+pnpm nx serve @autodev/orchestrator --args="Describe the requested change"
+```
+
+Optionally set `ENGRAM_MCP_COMMAND` to the complete local Engram MCP stdio command. The orchestrator enforces the lifecycle `intake → specification → planning → RED → GREEN → review → approval → delivery` and rejects skipped phases.
 
 Every generated deployable must add its Dockerfile, Kustomize resources, Nx tags and CI image target in the same change.
 
