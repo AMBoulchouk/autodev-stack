@@ -1,0 +1,22 @@
+# Tasks: agent control plane
+
+- [ ] ACP-001 Restrict production workflow dispatch to `refs/heads/main`.
+- [ ] ACP-002 Document production Environment deployment branch policy.
+- [ ] ACP-003 Add versioned workflow and checkpoint Zod schemas.
+- [ ] ACP-004 Implement checkpoint history and status invariants.
+- [ ] ACP-005 Add atomic checkpoint persistence.
+- [ ] ACP-006 Add exclusive resume locking.
+- [ ] ACP-007 Add outcome and typed evidence schemas.
+- [ ] ACP-008 Implement deterministic phase gates.
+- [ ] ACP-009 Implement blocked, failed and rework states.
+- [ ] ACP-010 Test review-to-GREEN and approval-to-planning loops.
+- [ ] ACP-011 Replace whole-phase retries with model retry policy.
+- [ ] ACP-012 Persist attempts, usage and terminal failures.
+- [ ] ACP-013 Define executor and capability contracts.
+- [ ] ACP-014 Implement isolated worktree lifecycle.
+- [ ] ACP-015 Implement RED executor and failure evidence.
+- [ ] ACP-016 Implement GREEN executor and passing-gate evidence.
+- [ ] ACP-017 Implement independent read-only review executor.
+- [ ] ACP-018 Implement deterministic approval gate.
+- [ ] ACP-019 Implement GitHub/GitOps delivery adapter.
+- [ ] ACP-020 Add end-to-end disposable-repository tests.
