@@ -9,6 +9,13 @@ out-tsc
 node_modules
 .pnpm-store
 
+# local environment and secrets
+.env*
+!.env.example
+
+# autonomous workflow checkpoints
+.autodev/runs/
+
 # IDEs and editors
 /.idea
 .project

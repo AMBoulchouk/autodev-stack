@@ -66,6 +66,15 @@ AWS_DEPLOY_ROLE_ARN=<github-oidc-role-arn>
 ECR_REGISTRY=<account>.dkr.ecr.<region>.amazonaws.com
 ```
 
+Crear secretos del repositorio:
+
+```text
+PROMOTION_APP_ID=<github-app-id>
+PROMOTION_APP_PRIVATE_KEY=<github-app-private-key>
+```
+
+La GitHub App debe tener permisos `Contents: write` y `Pull requests: write`. Proteger `main`, exigir los checks de CI y configurar reviewers obligatorios en el environment `production`.
+
 El rol debe usar GitHub OIDC y restringir repositorio, rama, environment y permisos AWS.
 
 ## 6. Crear repositorios ECR
@@ -107,7 +116,14 @@ ENTRA_EXTERNAL_TENANT_ID=<external-tenant-id>
 ENTRA_EXTERNAL_CLIENT_ID=<external-client-id>
 OPENAI_API_KEY=<openai-api-key>
 ENGRAM_MCP_COMMAND=<engram-stdio-command>
+ENGRAM_READ_TOOLS=<read-tool-1,read-tool-2>
+OPENAI_MODEL=gpt-5.4-mini
+AGENT_MAX_TURNS=6
+AGENT_MAX_OUTPUT_TOKENS=4000
+AGENT_MAX_RETRIES=2
 ```
+
+Engram no se inicia sin una allowlist explícita de herramientas de lectura. Los checkpoints se guardan en `.autodev/runs` y la entrega se reanuda con `--resume <archivo> --approve`.
 
 Entra ID se usa para workforce y administración. Entra External ID se usa para clientes y usuarios externos.
 

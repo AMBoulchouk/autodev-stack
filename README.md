@@ -50,7 +50,11 @@ export OPENAI_API_KEY=<key>
 pnpm nx serve @autodev/orchestrator --args="Describe the requested change"
 ```
 
-Optionally set `ENGRAM_MCP_COMMAND` to the complete local Engram MCP stdio command. The orchestrator enforces the lifecycle `intake → specification → planning → RED → GREEN → review → approval → delivery` and rejects skipped phases.
+Optionally set `ENGRAM_MCP_COMMAND` and the explicit read-only `ENGRAM_READ_TOOLS` allowlist. The orchestrator executes and checkpoints `intake → specification → planning → RED → GREEN → review`, then pauses at approval. Resume an approved checkpoint with:
+
+```bash
+pnpm nx serve @autodev/orchestrator --args="--resume .autodev/runs/<run-id>.json --approve"
+```
 
 Every generated deployable must add its Dockerfile, Kustomize resources, Nx tags and CI image target in the same change.
 

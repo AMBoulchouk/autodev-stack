@@ -43,6 +43,40 @@ export default [
               ],
             },
             {
+              sourceTag: 'type:contracts',
+              onlyDependOnLibsWithTags: ['type:contracts', 'type:config'],
+            },
+            {
+              sourceTag: 'type:domain',
+              onlyDependOnLibsWithTags: [
+                'type:contracts',
+                'type:domain',
+                'type:config',
+              ],
+            },
+            {
+              sourceTag: 'type:data-access',
+              onlyDependOnLibsWithTags: [
+                'type:contracts',
+                'type:domain',
+                'type:data-access',
+                'type:config',
+              ],
+            },
+            {
+              sourceTag: 'type:config',
+              onlyDependOnLibsWithTags: ['type:config'],
+            },
+            {
+              sourceTag: 'type:ui',
+              onlyDependOnLibsWithTags: [
+                'type:contracts',
+                'type:domain',
+                'type:ui',
+                'type:config',
+              ],
+            },
+            {
               sourceTag: 'scope:platform',
               onlyDependOnLibsWithTags: ['scope:platform', 'scope:shared'],
             },
