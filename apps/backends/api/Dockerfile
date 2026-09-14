@@ -11,7 +11,7 @@ FROM node:24-alpine AS runtime
 ENV NODE_ENV=production
 WORKDIR /app
 COPY --from=build --chown=node:node /workspace/apps/backends/api/dist ./
-RUN corepack prepare pnpm@10.33.0 --activate && pnpm install --prod --frozen-lockfile
+RUN corepack enable && corepack prepare pnpm@10.33.0 --activate && pnpm install --prod --frozen-lockfile
 USER node
 EXPOSE 3000
 CMD ["node", "main.js"]
