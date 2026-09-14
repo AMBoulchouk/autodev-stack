@@ -6,6 +6,13 @@ import {
 import { createWorkflowRun } from './workflow';
 
 describe('resumable orchestrator', () => {
+  const output = (phase: string) => ({
+    summary: `${phase} output`,
+    evidence: [],
+    risks: [],
+    nextInputs: [],
+  });
+
   const createCheckpoint = (): WorkflowCheckpoint => ({
     workflow: createWorkflowRun('Add customer onboarding'),
     outputs: {},
@@ -18,7 +25,7 @@ describe('resumable orchestrator', () => {
       createCheckpoint(),
       async (phase) => {
         executed.push(phase);
-        return `${phase} output`;
+        return output(phase);
       },
       async () => undefined,
     );
@@ -37,16 +44,16 @@ describe('resumable orchestrator', () => {
   it('resumes an approved checkpoint and completes delivery', async () => {
     const awaitingApproval = await executeUntilApproval(
       createCheckpoint(),
-      async (phase) => `${phase} output`,
+      async (phase) => output(phase),
       async () => undefined,
     );
     const completed = await approveAndDeliver(
       awaitingApproval,
-      async () => 'delivery output',
+      async () => output('delivery'),
       async () => undefined,
     );
 
     expect(completed.status).toBe('completed');
-    expect(completed.outputs.delivery).toBe('delivery output');
+    expect(completed.outputs.delivery?.summary).toBe('delivery output');
   });
 });

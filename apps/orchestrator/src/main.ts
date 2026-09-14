@@ -8,6 +8,7 @@ import { mkdir, readFile, writeFile } from 'node:fs/promises';
 import { dirname, resolve } from 'node:path';
 import { approveAndDeliver, executeUntilApproval } from './orchestrator';
 import type { PhaseExecutor, WorkflowCheckpoint } from './orchestrator';
+import { PhaseOutputSchema } from './phase-output';
 import { createWorkflowRun } from './workflow';
 
 function boundedInteger(
@@ -88,6 +89,7 @@ async function main() {
       name: `Autodev ${phase} agent`,
       model: process.env.OPENAI_MODEL ?? 'gpt-5.4-mini',
       modelSettings: { maxTokens },
+      outputType: PhaseOutputSchema,
       instructions: [
         `Execute only the ${phase} phase of the software delivery workflow.`,
         'Follow SDD and strict RED-GREEN-REFACTOR TDD.',
@@ -103,7 +105,10 @@ async function main() {
       priorOutputs: state.outputs,
     });
     const result = await retry(() => run(agent, input, { maxTurns }), retries);
-    return String(result.finalOutput ?? '');
+    if (!result.finalOutput) {
+      throw new Error(`${phase} agent returned no structured output`);
+    }
+    return result.finalOutput;
   };
 
   try {

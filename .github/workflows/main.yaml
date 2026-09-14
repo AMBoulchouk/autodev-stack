@@ -10,10 +10,6 @@ on:
       - 'infrastructure/kubernetes/overlays/prod/**'
   workflow_dispatch:
 
-concurrency:
-  group: main-${{ github.ref }}
-  cancel-in-progress: true
-
 permissions:
   actions: read
   contents: read
@@ -22,13 +18,16 @@ jobs:
   quality:
     if: github.event_name != 'workflow_dispatch'
     runs-on: ubuntu-latest
+    concurrency:
+      group: quality-${{ github.ref }}
+      cancel-in-progress: true
     steps:
-      - uses: actions/checkout@v5
+      - uses: actions/checkout@fbc6f3992d24b796d5a048ff273f7fcc4a7b6c09 # v5
         with:
           fetch-depth: 0
-      - uses: nrwl/nx-set-shas@v5
-      - uses: pnpm/action-setup@v4
-      - uses: actions/setup-node@v4
+      - uses: nrwl/nx-set-shas@afb73a62d26e41464e9254689e1fd6122ee683c1 # v5
+      - uses: pnpm/action-setup@f40ffcd9367d9f12939873eb1018b921a783ffaa # v4
+      - uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020 # v4
         with:
           node-version: 24
           cache: pnpm
@@ -36,7 +35,7 @@ jobs:
       - run: pnpm nx affected -t lint,typecheck,test,build
       - run: docker compose config --quiet
       - name: Scan repository secrets
-        uses: aquasecurity/trivy-action@v0.36.0
+        uses: aquasecurity/trivy-action@a9c7b0f06e461e9d4b4d1711f154ee024b8d7ab8 # v0.36.0
         with:
           scan-type: fs
           scan-ref: .
@@ -46,14 +45,14 @@ jobs:
         run: |
           docker build -f apps/backends/api/Dockerfile -t autodev-api:pr .
           docker build -f apps/frontends/web/Dockerfile -t autodev-web:pr .
-      - uses: aquasecurity/trivy-action@v0.36.0
+      - uses: aquasecurity/trivy-action@a9c7b0f06e461e9d4b4d1711f154ee024b8d7ab8 # v0.36.0
         with:
           image-ref: autodev-api:pr
           format: table
           exit-code: 1
           ignore-unfixed: true
           severity: CRITICAL,HIGH
-      - uses: aquasecurity/trivy-action@v0.36.0
+      - uses: aquasecurity/trivy-action@a9c7b0f06e461e9d4b4d1711f154ee024b8d7ab8 # v0.36.0
         with:
           image-ref: autodev-web:pr
           format: table
@@ -64,12 +63,15 @@ jobs:
   manifests:
     if: github.event_name != 'workflow_dispatch'
     runs-on: ubuntu-latest
+    concurrency:
+      group: manifests-${{ github.ref }}
+      cancel-in-progress: true
     strategy:
       matrix:
         environment: [dev, staging, prod]
     steps:
-      - uses: actions/checkout@v5
-      - uses: imranismail/setup-kustomize@v2
+      - uses: actions/checkout@fbc6f3992d24b796d5a048ff273f7fcc4a7b6c09 # v5
+      - uses: imranismail/setup-kustomize@2ba527d4d055ab63514ba50a99456fc35684947f # v2
       - name: Render and validate ${{ matrix.environment }}
         shell: bash
         run: |
@@ -82,28 +84,31 @@ jobs:
     if: github.event_name == 'push'
     needs: [quality, manifests]
     runs-on: ubuntu-latest
+    concurrency:
+      group: staging-delivery
+      cancel-in-progress: false
     permissions:
       contents: write
       id-token: write
       pull-requests: write
     steps:
       - id: app-token
-        uses: actions/create-github-app-token@v2
+        uses: actions/create-github-app-token@fee1f7d63c2ff003460e3d139729b119787bc349 # v2
         with:
           app-id: ${{ secrets.PROMOTION_APP_ID }}
           private-key: ${{ secrets.PROMOTION_APP_PRIVATE_KEY }}
-      - uses: actions/checkout@v5
+      - uses: actions/checkout@fbc6f3992d24b796d5a048ff273f7fcc4a7b6c09 # v5
         with:
           token: ${{ steps.app-token.outputs.token }}
-      - uses: imranismail/setup-kustomize@v2
-      - uses: aws-actions/configure-aws-credentials@v5
+      - uses: imranismail/setup-kustomize@2ba527d4d055ab63514ba50a99456fc35684947f # v2
+      - uses: aws-actions/configure-aws-credentials@cabfdba3510de1431bac9dba27511d97497fc100 # v5
         with:
           role-to-assume: ${{ vars.AWS_DEPLOY_ROLE_ARN }}
           aws-region: ${{ vars.AWS_REGION }}
-      - uses: aws-actions/amazon-ecr-login@v2
-      - uses: docker/setup-buildx-action@v3
+      - uses: aws-actions/amazon-ecr-login@03f1aad4c6c7ffd436567f42f9384779290529bd # v2
+      - uses: docker/setup-buildx-action@8d2750c68a42422c14e847fe6c8ac0403b4cbd6f # v3
       - id: api
-        uses: docker/build-push-action@v6
+        uses: docker/build-push-action@10e90e3645eae34f1e60eeb005ba3a3d33f178e8 # v6
         with:
           context: .
           file: apps/backends/api/Dockerfile
@@ -112,7 +117,7 @@ jobs:
           provenance: mode=max
           sbom: true
       - id: web
-        uses: docker/build-push-action@v6
+        uses: docker/build-push-action@10e90e3645eae34f1e60eeb005ba3a3d33f178e8 # v6
         with:
           context: .
           file: apps/frontends/web/Dockerfile
@@ -120,6 +125,22 @@ jobs:
           tags: ${{ vars.ECR_REGISTRY }}/autodev-web:${{ github.sha }}
           provenance: mode=max
           sbom: true
+      - name: Scan published API image
+        uses: aquasecurity/trivy-action@a9c7b0f06e461e9d4b4d1711f154ee024b8d7ab8 # v0.36.0
+        with:
+          image-ref: ${{ vars.ECR_REGISTRY }}/autodev-api@${{ steps.api.outputs.digest }}
+          format: table
+          exit-code: 1
+          ignore-unfixed: true
+          severity: CRITICAL,HIGH
+      - name: Scan published web image
+        uses: aquasecurity/trivy-action@a9c7b0f06e461e9d4b4d1711f154ee024b8d7ab8 # v0.36.0
+        with:
+          image-ref: ${{ vars.ECR_REGISTRY }}/autodev-web@${{ steps.web.outputs.digest }}
+          format: table
+          exit-code: 1
+          ignore-unfixed: true
+          severity: CRITICAL,HIGH
       - name: Open staging promotion PR
         env:
           GH_TOKEN: ${{ steps.app-token.outputs.token }}
@@ -153,21 +174,24 @@ jobs:
     if: github.event_name == 'workflow_dispatch'
     environment: production
     runs-on: ubuntu-latest
+    concurrency:
+      group: production-delivery
+      cancel-in-progress: false
     permissions:
       contents: write
       id-token: write
       pull-requests: write
     steps:
       - id: app-token
-        uses: actions/create-github-app-token@v2
+        uses: actions/create-github-app-token@fee1f7d63c2ff003460e3d139729b119787bc349 # v2
         with:
           app-id: ${{ secrets.PROMOTION_APP_ID }}
           private-key: ${{ secrets.PROMOTION_APP_PRIVATE_KEY }}
-      - uses: actions/checkout@v5
+      - uses: actions/checkout@fbc6f3992d24b796d5a048ff273f7fcc4a7b6c09 # v5
         with:
           token: ${{ steps.app-token.outputs.token }}
-      - uses: imranismail/setup-kustomize@v2
-      - uses: aws-actions/configure-aws-credentials@v5
+      - uses: imranismail/setup-kustomize@2ba527d4d055ab63514ba50a99456fc35684947f # v2
+      - uses: aws-actions/configure-aws-credentials@cabfdba3510de1431bac9dba27511d97497fc100 # v5
         with:
           role-to-assume: ${{ vars.AWS_DEPLOY_ROLE_ARN }}
           aws-region: ${{ vars.AWS_REGION }}

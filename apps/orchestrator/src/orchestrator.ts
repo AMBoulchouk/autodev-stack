@@ -1,17 +1,18 @@
 import { Phase, WorkflowRun, transitionWorkflow } from './workflow';
+import type { PhaseOutput } from './phase-output';
 
-export type PhaseOutput = Partial<Record<Phase, string>>;
+export type PhaseOutputs = Partial<Record<Phase, PhaseOutput>>;
 
 export type WorkflowCheckpoint = {
   workflow: WorkflowRun;
-  outputs: PhaseOutput;
+  outputs: PhaseOutputs;
   status: 'running' | 'awaiting_approval' | 'completed';
 };
 
 export type PhaseExecutor = (
   phase: Exclude<Phase, 'intake' | 'approval' | 'completed'>,
   checkpoint: WorkflowCheckpoint,
-) => Promise<string>;
+) => Promise<PhaseOutput>;
 
 const autonomousPhases = [
   'specification',
